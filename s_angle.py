@@ -49,7 +49,7 @@ r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da convers
 rot_matrix = np.zeros((3,3)) #inicializacao da variavel que recebe a matriz de rotacao reduzida para 3x3              
 fg = np.array([0, 0, -1])
 I = np.zeros((6,3))
-Y = np.zeros((6,3))
+Y = np.zeros(6)
 identidade = np.identity(3)
 def modulo(x):
     mod = 0
@@ -59,7 +59,33 @@ def modulo(x):
         soma += x[k]*x[k]
     mod = sqrt(soma)
     return mod
+def prodMatrix(matrizA, matrizB):
+    """Multiplica duas matrizes."""
+    sizeLA = len(matrizA)
+    sizeCA = len(matrizA[0]) # deve ser igual a sizeLB para ser possivel multiplicar as matrizes
+    sizeCB = len(matrizB[0])
+    matrizR = []
+    # Multiplica
+    for i in range(sizeLA):
+        matrizR.append([])
+        for j in range(sizeCB):
+            val = 0
+            for k in range(sizeCA):
+                    val += matrizA[i][k]*matrizB[k][j]
+            matrizR[i].append(val)
+    return matrizR
+def prodVetor(A, B):
+    #Multiplica dois vetores
+    """OBS:A e multiplicado pela transposicao do vetor B"""
+    r = np.zeros((3,3))
+    for i in range(len(A)):
+        for j in range(len(B)):
+            r[i][j] = A[i]*B[j]
+    return r
 
+
+
+    
 def min(x):
     m = 999999
     for i in range(len(x)):
@@ -78,26 +104,27 @@ def callback_imu(data):
     r = quaternion_matrix(quat)#retorna matriz de rotacao 4x4
     rot_matrix = r[0:3, 0:3] #corta a matriz de rotacao em 3x3 e armazena em rot_matrix
     #multiplicando cada ponto pi(i = 1,2,...,6) pela matriz de rotacao, resultando em pontos pi_l(i = 1,2,...,6):
-    p1_l = rot_matrix*p1#erro- multiplicacao
-    p2_l = rot_matrix*p2
-    p3_l = rot_matrix*p3
-    p4_l = rot_matrix*p4
-    p5_l = rot_matrix*p5
-    p6_l = rot_matrix*p6 
+    p1_l = np.dot(rot_matrix,p1)
+    p2_l = np.dot(rot_matrix,p2)
+    p3_l = np.dot(rot_matrix,p3)
+    p4_l = np.dot(rot_matrix,p4)
+    p5_l = np.dot(rot_matrix,p5)
+    p6_l = np.dot(rot_matrix,p6)
 
     p = np.array([p1_l, p2_l, p3_l, p4_l, p5_l, p6_l])#coloca todos os pontos em um array
     for i in range(len(a)-1):
         a[i] = p[i+1]-p[i]
     a[5] = p[0]-p[5]
+    #print ("a nao normalizado: \n%s"%a)
     for i in range(len(a)):
         a[i] = a[i]/modulo(a[i])
+    #print ("a normalizado: \n%s"%a)
     for i in range(len(a)-1):
-        #I[i] = p[i+1] - np.dot((np.square(a[i])), p[i+1])
-        I[i] = (identidade-a[i])*p[i+1]#erro multiplicacao e square e identidade
-    #I[5] = p[0]- np.dot((np.square(a[5])), p[0])
-    I[5] = (identidade-np.square(a[5]))*p[0]
+        I[i] = np.dot((identidade - np.outer(a[i],np.transpose(a[i]))),p[i+1])
+        #I[i] = np.dot((identidade-np.dot(a[i],a_t)),p[i+1])#erro multiplicacao e square e identidade
+    I[5] = np.dot((identidade - np.dot(a[5],np.transpose(a[5]))),p[0])
     for i in range(len(Y)):
-        Y[i] = np.arccos(np.dot(fg/modulo(fg), I[i]/modulo(I[i])))
+        Y[i] = -I[i][2]/modulo(I[i])
     ang_final = np.degrees(Y)
     #Y = np.degrees(Y)
     #for i in range(len(Y)):
@@ -114,16 +141,17 @@ def listener():
         print "---------------------------------------------------------------------------------------------------------"
         print ("Matriz de rotacao: \n%s"%rot_matrix)
         print "---------------------------------------------------------------------------------------------------------"
-        print ("Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
-        print "---------------------------------------------------------------------------------------------------------"
-        #print ("Matriz I: \n%s"%I)
+        #print ("P1: \n%s"%p1)
         #print "---------------------------------------------------------------------------------------------------------"
-        #print ("Matriz Y: \n%s"%Y)
+        #print ("P1 multiplicado pela matriz de rotacao: \n%s"%p1_l)
+        #print "---------------------------------------------------------------------------------------------------------"
+        print ("p- Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
+        print "---------------------------------------------------------------------------------------------------------"
+        #print "---------------------------------------------------------------------------------------------------------"
         #print "---------------------------------------------------------------------------------------------------------"
         print ("Angulos Finais: \n%s"%ang_final)
         print "---------------------------------------------------------------------------------------------------------"
-        print 
-        print "\n"
+
         
 	rate.sleep()
 
