@@ -59,33 +59,20 @@ def modulo(x):
         soma += x[k]*x[k]
     mod = sqrt(soma)
     return mod
-def prodMatrix(matrizA, matrizB):
-    """Multiplica duas matrizes."""
-    sizeLA = len(matrizA)
-    sizeCA = len(matrizA[0]) # deve ser igual a sizeLB para ser possivel multiplicar as matrizes
-    sizeCB = len(matrizB[0])
-    matrizR = []
-    # Multiplica
-    for i in range(sizeLA):
-        matrizR.append([])
-        for j in range(sizeCB):
-            val = 0
-            for k in range(sizeCA):
-                    val += matrizA[i][k]*matrizB[k][j]
-            matrizR[i].append(val)
-    return matrizR
-def prodVetor(A, B):
-    #Multiplica dois vetores
-    """OBS:A e multiplicado pela transposicao do vetor B"""
-    r = np.zeros((3,3))
-    for i in range(len(A)):
-        for j in range(len(B)):
-            r[i][j] = A[i]*B[j]
-    return r
-
-
-
+def print_diagrama(ang):
+    cor = np.array([32, 32, 32, 32, 32, 32])
+    for i in range(len(ang)):
+        if ang[i]<10:
+            cor[i] = 31
+        elif ang[i]>=10 and ang[i]<25:
+            cor[i] = 33
+        else:
+            cor[i] = 32
+    #diagrama = '\033[%sm'%cor+"%.2f"%ang[i]+'\033[0;0m'
+    print '\033[%sm'%(cor[5])+'(%s) ____ '%round(ang[5],2)+'\033[0;0m' + '\033[%sm'%(cor[0])+'(%s)\n'%round(ang[0],2)+'\033[0;0m' + '    |          |\n' + '\033[%sm'%(cor[4])+'(%s)      '%round(ang[4],2)+'\033[0;0m' + '\033[%sm'%(cor[1])+'(%s)\n'%round(ang[1],2)+'\033[0;0m'+ '    |          |\n' + '\033[%sm'%(cor[3])+'(%s) ____ '%round(ang[3],2)+'\033[0;0m' + '\033[%sm'%(cor[2])+'(%s)\n'%round(ang[2],2)+'\033[0;0m'
+        
     
+
 def min(x):
     m = 999999
     for i in range(len(x)):
@@ -122,7 +109,7 @@ def callback_imu(data):
     for i in range(len(a)-1):
         I[i] = np.dot((identidade - np.outer(a[i],np.transpose(a[i]))),p[i+1])
         #I[i] = np.dot((identidade-np.dot(a[i],a_t)),p[i+1])#erro multiplicacao e square e identidade
-    I[5] = np.dot((identidade - np.dot(a[5],np.transpose(a[5]))),p[0])
+    I[5] = np.dot((identidade - np.outer(a[5],np.transpose(a[5]))),p[0])
     for i in range(len(Y)):
         Y[i] = -I[i][2]/modulo(I[i])
     ang_final = np.degrees(Y)
@@ -149,9 +136,9 @@ def listener():
         print "---------------------------------------------------------------------------------------------------------"
         #print "---------------------------------------------------------------------------------------------------------"
         #print "---------------------------------------------------------------------------------------------------------"
-        print ("Angulos Finais: \n%s"%ang_final)
+        #print ("Angulos Finais: \n%s"%ang_final)
         print "---------------------------------------------------------------------------------------------------------"
-
+        print_diagrama(ang_final)
         
 	rate.sleep()
 
