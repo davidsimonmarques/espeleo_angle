@@ -62,12 +62,14 @@ def modulo(x):
 def print_diagrama(ang):
     cor = np.array([32, 32, 32, 32, 32, 32])
     for i in range(len(ang)):
-        if ang[i]<10:
+        if ang[i]<10 and ang[i]>0:
+            cor[i] = 33
+        elif ang[i]<=0:
             cor[i] = 31
         elif ang[i]>=10 and ang[i]<25:
-            cor[i] = 33
-        else:
             cor[i] = 32
+        else:
+            cor[i] = 34
     print '\033[%sm'%(cor[5])+'(%s) '%round(ang[5],2)+'\033[0;0m'+'____ ' + '\033[%sm'%(cor[0])+'(%s)\n'%round(ang[0],2)+'\033[0;0m' + '    |      X   |\n' + '\033[%sm'%(cor[4])+'(%s) '%round(ang[4],2)+'\033[0;0m' +'y__| '+ '\033[%sm'%(cor[1])+'(%s)\n'%round(ang[1],2)+'\033[0;0m'+ '    |          |\n' + '\033[%sm'%(cor[3])+'(%s) '%round(ang[3],2)+'\033[0;0m' +'____ '+ '\033[%sm'%(cor[2])+'(%s)\n'%round(ang[2],2)+'\033[0;0m'
         
     
@@ -122,14 +124,17 @@ def listener():
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():            
         print "\n"
+        print len(p1)
         print "-----------------------------------------------------"
         print ("Quaternio IMU: %s"%quat)
         print "-----------------------------------------------------"
         print ("Matriz de rotacao: \n%s"%rot_matrix)
         print "-----------------------------------------------------"
         print ("P1: \n%s"%p1)
+        print "-----------------------------------------------------"
+        print ("a: \n%s"%a)
         print "-----------------------------------------------------"        
-        print ("P1 multiplicado pela matriz de rotacao: \n%s"%p1_l)
+        print ("Matriz de rotacao multiplicada por p1: \n%s"%p1_l)
         print "-----------------------------------------------------"
         print ("p- Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
         print "-----------------------------------------------------"  
