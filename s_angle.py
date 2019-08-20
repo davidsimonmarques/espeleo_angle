@@ -112,7 +112,8 @@ def callback_imu(data):
         #I[i] = np.dot((identidade-np.dot(a[i],a_t)),p[i+1])#erro multiplicacao e square e identidade
     I[5] = np.dot((identidade - np.outer(a[5],np.transpose(a[5]))),p[0])
     for i in range(len(Y)):
-        Y[i] = -I[i][2]/modulo(I[i])
+        #Y[i] = np.arccos(-I[i][2]/modulo(I[i]))
+        Y[i] = np.arccos(np.dot(fg/modulo(fg), I[i]/modulo(I[i])))
     ang_final = np.degrees(Y)
     #Y = np.degrees(Y)
     #for i in range(len(Y)):
@@ -124,7 +125,6 @@ def listener():
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():            
         print "\n"
-        print len(p1)
         print "-----------------------------------------------------"
         print ("Quaternio IMU: %s"%quat)
         print "-----------------------------------------------------"
