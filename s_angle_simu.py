@@ -4,17 +4,17 @@
 import rospy
 from std_msgs.msg import String
 from geometry_msgs.msg import Quaternion, Point
-from tf.transformations import euler_from_quaternion, euler_matrix, quaternion_matrix
+from tf.transformations import euler_matrix
 from sensor_msgs.msg import Imu
 import numpy as np
 from math import sqrt, acos 
 #_________________________________________  
 #Diagrama da posicao dos pontos de contato do espeleo_robo:
-#    |p6| ____ |p1|             
-#     /     X   \         
-#  |p5|  y__|   |p2|         
-#     \         /            
-#    |p4| ____ |p3|             
+#    (p6) ____ (p1)             
+#     |     X   |         
+#  (p5)  y__|   (p2)       
+#     |         |            
+#   (p4) ____ (p3)             
 # 
 m = 6 #numero de pontos de contato
 dx = 0.212 
@@ -34,23 +34,24 @@ p6 = np.array([ dx,  (dy/2)  , -dz])
 
 #----------------------------------
 #Variaveis para receber o valor dos pontos multiplicados pela matriz de rotacao
-p1_l = [0, 0, 0]
-p2_l = [0, 0, 0]
-p3_l = [0, 0, 0]
-p4_l = [0, 0, 0]
-p5_l = [0, 0, 0]
-p6_l = [0, 0, 0]
-p = [0, 0, 0, 0, 0, 0] #Esse vetor recebera em cada coluna um vetor pi_l (i = 1,2,...,6)
+p1_l = np.zeros(3)
+p2_l = np.zeros(3)
+p3_l = np.zeros(3)
+p4_l = np.zeros(3)
+p5_l = np.zeros(3)
+p6_l = np.zeros(3)
+p = np.zeros(6) #Esse vetor recebera em cada coluna um vetor pi_l (i = 1,2,...,6)
 #----------------------------------
 a = np.zeros((6, 3))
+e = np.zeros(3)
 ang_final = np.zeros((6,1))
-e = [0, 0, 0] #inicializacao da variavel que recebe os angulos de euler da imu do simulador
-r = np.zeros((4,4)), #inicializacao da variavel que recebe o resultado da conversao de quaternio em matriz de rotacao
+quat = np.zeros(4) #inicializacao da variavel que recebe o quaternio da imu
+r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da conversao de quaternio em matriz de rotacao
 rot_matrix = np.zeros((3,3)) #inicializacao da variavel que recebe a matriz de rotacao reduzida para 3x3              
-fg = np.array([0, 0, -1])#CORRIGIR!!!!!!!!!!!!!!!!!!!!
-I = np.zeros((6,3))#inicializacao da variavel que recebe
-Y = np.zeros((6,3))#inicializacao da variavel que recebe
-
+fg = np.array([0, 0, -1])
+I = np.zeros((6,3))
+Y = np.zeros(6)
+identidade = np.identity(3)
 def modulo(x):
     mod = 0
     soma = 0
@@ -59,6 +60,20 @@ def modulo(x):
         soma += x[k]*x[k]
     mod = sqrt(soma)
     return mod
+def print_diagrama(ang):
+    cor = np.array([32, 32, 32, 32, 32, 32])
+    for i in range(len(ang)):
+        if ang[i]<10 and ang[i]>0:
+            cor[i] = 33
+        elif ang[i]<=0:
+            cor[i] = 31
+        elif ang[i]>=10 and ang[i]<25:
+            cor[i] = 32
+        else:
+            cor[i] = 34
+    print '\033[%sm'%(cor[5])+'(%s) '%round(ang[5],2)+'\033[0;0m'+'____ ' + '\033[%sm'%(cor[0])+'(%s)\n'%round(ang[0],2)+'\033[0;0m' + '    |      X   |\n' + '\033[%sm'%(cor[4])+'(%s) '%round(ang[4],2)+'\033[0;0m' +'y__| '+ '\033[%sm'%(cor[1])+'(%s)\n'%round(ang[1],2)+'\033[0;0m'+ '    |          |\n' + '\033[%sm'%(cor[3])+'(%s) '%round(ang[3],2)+'\033[0;0m' +'____ '+ '\033[%sm'%(cor[2])+'(%s)\n'%round(ang[2],2)+'\033[0;0m'
+        
+    
 
 def min(x):
     m = 999999
@@ -66,8 +81,6 @@ def min(x):
         if x[i]< m:
             m = x[i]
     return m
-
-
 
 def callback_imu(data):
     global quat, r, rot_matrix, e, I, Y, ang_final, fg
@@ -86,20 +99,25 @@ def callback_imu(data):
     p5_l = np.dot(rot_matrix, p5)
     p6_l = np.dot(rot_matrix, p6) 
     p = np.array([p1_l, p2_l, p3_l, p4_l, p5_l, p6_l])#coloca todos os pontos em um array
+    p = np.array([p1_l, p2_l, p3_l, p4_l, p5_l, p6_l])#coloca todos os pontos em um array
     for i in range(len(a)-1):
         a[i] = p[i+1]-p[i]
-        print a[i]
     a[5] = p[0]-p[5]
+    #print ("a nao normalizado: \n%s"%a)
     for i in range(len(a)):
         a[i] = a[i]/modulo(a[i])
+    #print ("a normalizado: \n%s"%a)
     for i in range(len(a)-1):
-        I[i] = p[i+1] - np.dot((np.square(a[i])), p[i+1])
-    I[5] = p[0]- np.dot((np.square(a[i])), p[0])#CORRIGIR!!!!!!!!!!!!!!!!!!!!!!!!!!!    
+        I[i] = np.dot((identidade - np.outer(a[i],np.transpose(a[i]))),p[i+1])
+        #I[i] = np.dot((identidade-np.dot(a[i],a_t)),p[i+1])#erro multiplicacao e square e identidade
+    I[5] = np.dot((identidade - np.outer(a[5],np.transpose(a[5]))),p[0])
     for i in range(len(Y)):
+        #Y[i] = np.arccos(-I[i][2]/modulo(I[i]))
         Y[i] = np.arccos(np.dot(fg/modulo(fg), I[i]/modulo(I[i])))
-    Y = np.degrees(Y)
-    for i in range(len(Y)):
-       ang_final[i] = min(Y[i])   
+    ang_final = np.degrees(Y)
+    #Y = np.degrees(Y)
+    #for i in range(len(Y)):
+       #ang_final[i] = min(Y[i])     
 
 def listener():
     rospy.init_node('stability_angle', anonymous=True)
@@ -108,7 +126,7 @@ def listener():
     while not rospy.is_shutdown():
         print fg
         print "\n"
-        print ang_final
+        print_diagrama(ang_final)
         print "\n"
 	rate.sleep()
 
