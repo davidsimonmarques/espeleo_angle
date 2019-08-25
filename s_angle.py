@@ -2,9 +2,9 @@
 # license removed for brevity
 #imports:________________________________
 import rospy
-from std_msgs.msg import String
-from geometry_msgs.msg import Quaternion
-from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_matrix
+from std_msgs.msg import String, Float32, Bool, Float32MultiArray
+from geometry_msgs.msg import Quaternion, Point
+from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_matrix 
 from sensor_msgs.msg import Imu
 import numpy as np
 from math import sqrt, acos 
@@ -48,8 +48,12 @@ quat = np.zeros(4) #inicializacao da variavel que recebe o quaternio da imu
 r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da conversao de quaternio em matriz de rotacao
 rot_matrix = np.zeros((3,3)) #inicializacao da variavel que recebe a matriz de rotacao reduzida para 3x3              
 fg = np.array([0, 0, -1])
-I = np.zeros((6,3))
+l = np.zeros((6,3))
 Y = np.zeros(6)
+sigma = np.zeros(6)
+euler_angles = euler_from_quaternion(quat)
+min_angle = 0
+flag = False
 identidade = np.identity(3)
 def modulo(x):
     mod = 0
@@ -82,7 +86,7 @@ def min(x):
     return m
 
 def callback_imu(data):
-    global quat, r, rot_matrix, I, Y, ang_final
+    global quat, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag
     global p1, p2, p3, p4, p5, p6, p1_l, p2_l, p3_l, p4_l, p5_l, p6_l, p_l, a, p
 
     quat[0] = data.orientation.x 
@@ -91,6 +95,7 @@ def callback_imu(data):
     quat[3] = data.orientation.w 
     r = quaternion_matrix(quat)#retorna matriz de rotacao 4x4
     rot_matrix = r[0:3, 0:3] #corta a matriz de rotacao em 3x3 e armazena em rot_matrix
+    #rot_matrix = identidade 
     #multiplicando cada ponto pi(i = 1,2,...,6) pela matriz de rotacao, resultando em pontos pi_l(i = 1,2,...,6):
     p1_l = np.dot(rot_matrix,p1)
     p2_l = np.dot(rot_matrix,p2)
@@ -107,23 +112,36 @@ def callback_imu(data):
     for i in range(len(a)):
         a[i] = a[i]/modulo(a[i])
     #print ("a normalizado: \n%s"%a)
-    for i in range(len(a)-1):
-        I[i] = np.dot((identidade - np.outer(a[i],np.transpose(a[i]))),p[i+1])
+    for i in range(len(l)-1):
+        l[i] = np.dot((identidade - np.outer(a[i],np.transpose(a[i]))),p[i+1])
         #I[i] = np.dot((identidade-np.dot(a[i],a_t)),p[i+1])#erro multiplicacao e square e identidade
-    I[5] = np.dot((identidade - np.outer(a[5],np.transpose(a[5]))),p[0])
+    l[5] = np.dot((identidade - np.outer(a[5],np.transpose(a[5]))),p[0])
+    for i in range(len(sigma)):
+            calc = np.dot(np.cross(l[i]/modulo(l[i]),fg/modulo(fg)),a[i])
+            if calc < 0:
+                sigma[i] = 1
+            else:
+                sigma[i] = -1
     for i in range(len(Y)):
-        #Y[i] = np.arccos(-I[i][2]/modulo(I[i]))
-        Y[i] = np.arccos(np.dot(fg/modulo(fg), I[i]/modulo(I[i])))
-    ang_final = np.degrees(Y)
-    #Y = np.degrees(Y)
-    #for i in range(len(Y)):
-       #ang_final[i] = min(Y[i])    
-
-def listener():
+        #Y[i] = np.arccos(-l[i][2]/modulo(l[i]))
+        Y[i] = sigma[i]*np.arccos(np.dot(fg/modulo(fg), l[i]/modulo(l[i])))
+    ang_final = np.rad2deg(Y)
+    min_angle = min(ang_final)
+    if min_angle < 10:
+        flag = True
+def procedure():
     rospy.init_node('stability_angle', anonymous=True)
+    min_pub = rospy.Publisher('/min_angle', Float32, queue_size=10)
+    angles_pub = rospy.Publisher('/angles', Float32MultiArray, queue_size=10)
+    flag_pub = rospy.Publisher('/angle_flag', Bool, queue_size=10)
+    euler_pub = rospy.Publisher('/euler_imu', Point, queue_size=10)
     rospy.Subscriber("/phone1/android/imu", Imu, callback_imu)
     rate = rospy.Rate(10)
-    while not rospy.is_shutdown():            
+    while not rospy.is_shutdown():   
+        min_pub.publish(min_angle)   
+        #angles_pub.publish(ang_final)
+        flag_pub.publish(flag)
+        #euler_pub.publish([euler_angles[0], euler_angles[1], euler_angles[2]])
         print "\n"
         print "-----------------------------------------------------"
         print ("Quaternio IMU: %s"%quat)
@@ -138,9 +156,10 @@ def listener():
         print "-----------------------------------------------------"
         print ("p- Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
         print "-----------------------------------------------------"  
-        print "Angulos (em graus):\n"
-        print_diagrama(ang_final)
+        print "Angulos (em graus):\n%s"%ang_final
+        #print_diagrama(ang_final)
         print "-----------------------------------------------------"  
+        
         
         
 	rate.sleep()
@@ -149,7 +168,7 @@ def listener():
 
 if __name__ == '__main__':
     try:
-        listener()
+        procedure()
     except rospy.ROSInterruptException:
         pass
        
