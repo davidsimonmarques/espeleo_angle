@@ -145,7 +145,7 @@ def procedure():
     angles_pub = rospy.Publisher('/angles', Float32MultiArray, queue_size=10)
     flag_pub = rospy.Publisher('/angle_flag', Bool, queue_size=10)
     euler_pub = rospy.Publisher('/euler_imu', Point, queue_size=10)
-    rospy.Subscriber("/imu/data", Imu, callback_imu) #para celular:  rospy.Subscriber("/phone1/android/imu", Imu, callback_imu)
+    rospy.Subscriber("/phone1/android/imu", Imu, callback_imu)
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         a = Float32MultiArray()
