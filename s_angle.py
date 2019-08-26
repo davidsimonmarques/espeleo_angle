@@ -99,9 +99,9 @@ def callback_imu(data):
     rot_matrix = r[0:3, 0:3] #corta a matriz de rotacao em 3x3 e armazena em rot_matrix
     #rot_matrix = np.identity(3) 
     e = euler_from_quaternion(quat)
-    euler_angles.x = e[0]
-    euler_angles.y = e[1]
-    euler_angles.z = e[2]
+    euler_angles.x = e[0] #row
+    euler_angles.y = e[1] #pitch
+    euler_angles.z = e[2] #yaw
 
     #multiplicando cada ponto pi(i = 1,2,...,6) pela matriz de rotacao, resultando em pontos pi_l(i = 1,2,...,6):
     p1_l = np.dot(rot_matrix,p1)
