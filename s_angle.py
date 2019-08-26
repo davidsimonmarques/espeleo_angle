@@ -2,6 +2,8 @@
 # license removed for brevity
 #imports:________________________________
 import rospy
+from rospy.numpy_msg import numpy_msg
+from rospy_tutorials.msg import Floats
 from std_msgs.msg import String, Float32, Bool, Float32MultiArray
 from geometry_msgs.msg import Quaternion, Point
 from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_matrix 
@@ -51,7 +53,7 @@ fg = np.array([0, 0, -1])
 l = np.zeros((6,3))
 Y = np.zeros(6)
 sigma = np.zeros(6)
-euler_angles = euler_from_quaternion(quat)
+euler_angles = Point()
 min_angle = 0
 flag = False
 identidade = np.identity(3)
@@ -86,16 +88,21 @@ def min(x):
     return m
 
 def callback_imu(data):
-    global quat, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag
+    global quat, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag, euler_angles
     global p1, p2, p3, p4, p5, p6, p1_l, p2_l, p3_l, p4_l, p5_l, p6_l, p_l, a, p
-
+    identidade = np.identity(3)
     quat[0] = data.orientation.x 
     quat[1] = data.orientation.y
     quat[2] = data.orientation.z
     quat[3] = data.orientation.w 
     r = quaternion_matrix(quat)#retorna matriz de rotacao 4x4
     rot_matrix = r[0:3, 0:3] #corta a matriz de rotacao em 3x3 e armazena em rot_matrix
-    #rot_matrix = identidade 
+    #rot_matrix = np.identity(3) 
+    e = euler_from_quaternion(quat)
+    euler_angles.x = e[0]
+    euler_angles.y = e[1]
+    euler_angles.z = e[2]
+
     #multiplicando cada ponto pi(i = 1,2,...,6) pela matriz de rotacao, resultando em pontos pi_l(i = 1,2,...,6):
     p1_l = np.dot(rot_matrix,p1)
     p2_l = np.dot(rot_matrix,p2)
@@ -112,6 +119,7 @@ def callback_imu(data):
     for i in range(len(a)):
         a[i] = a[i]/modulo(a[i])
     #print ("a normalizado: \n%s"%a)
+    
     for i in range(len(l)-1):
         l[i] = np.dot((identidade - np.outer(a[i],np.transpose(a[i]))),p[i+1])
         #I[i] = np.dot((identidade-np.dot(a[i],a_t)),p[i+1])#erro multiplicacao e square e identidade
@@ -129,6 +137,8 @@ def callback_imu(data):
     min_angle = min(ang_final)
     if min_angle < 10:
         flag = True
+    else:
+        flag = False
 def procedure():
     rospy.init_node('stability_angle', anonymous=True)
     min_pub = rospy.Publisher('/min_angle', Float32, queue_size=10)
@@ -137,28 +147,35 @@ def procedure():
     euler_pub = rospy.Publisher('/euler_imu', Point, queue_size=10)
     rospy.Subscriber("/phone1/android/imu", Imu, callback_imu)
     rate = rospy.Rate(10)
-    while not rospy.is_shutdown():   
+    while not rospy.is_shutdown():
+        a = Float32MultiArray()
+        a.data = ang_final
+        #a = [ang_final[0], ang_final[1], ang_final[2], ang_final[3], ang_final[4], ang_final[5]]   
         min_pub.publish(min_angle)   
-        #angles_pub.publish(ang_final)
+        angles_pub.publish(a)
         flag_pub.publish(flag)
-        #euler_pub.publish([euler_angles[0], euler_angles[1], euler_angles[2]])
-        print "\n"
-        print "-----------------------------------------------------"
-        print ("Quaternio IMU: %s"%quat)
-        print "-----------------------------------------------------"
-        print ("Matriz de rotacao: \n%s"%rot_matrix)
-        print "-----------------------------------------------------"
-        print ("P1: \n%s"%p1)
-        print "-----------------------------------------------------"
-        print ("a: \n%s"%a)
-        print "-----------------------------------------------------"        
-        print ("Matriz de rotacao multiplicada por p1: \n%s"%p1_l)
-        print "-----------------------------------------------------"
-        print ("p- Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
-        print "-----------------------------------------------------"  
-        print "Angulos (em graus):\n%s"%ang_final
+        euler_pub.publish(euler_angles)
+        #print "\n"
+        #print "-----------------------------------------------------"
+        #print ("Quaternio IMU: %s"%quat)
+        #print "-----------------------------------------------------"
+        #print ("Matriz de rotacao: \n%s"%rot_matrix)
+        #print "-----------------------------------------------------"
+        #print ("P1: \n%s"%p1)
+        #print "-----------------------------------------------------"
+        #print ("a: \n%s"%a)
+        #print "-----------------------------------------------------"        
+        #print ("Matriz de rotacao multiplicada por p1: \n%s"%p1_l)
+        #print "-----------------------------------------------------"
+        #print ("p- Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
+        #print "-----------------------------------------------------"  
+        #print "Angulos (em graus):\n%s"%ang_final
         #print_diagrama(ang_final)
-        print "-----------------------------------------------------"  
+        #print "-----------------------------------------------------"  
+        #print euler_angles
+
+        
+        
         
         
         
