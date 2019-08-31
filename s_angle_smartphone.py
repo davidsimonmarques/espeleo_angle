@@ -6,7 +6,7 @@ from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from std_msgs.msg import String, Float32, Bool, Float32MultiArray
 from geometry_msgs.msg import Quaternion, Point
-from tf.transformations import euler_from_quaternion, quaternion_from_euler, quaternion_matrix 
+from tf.transformations import euler_from_quaternion, euler_from_matrix, quaternion_matrix 
 from sensor_msgs.msg import Imu
 import numpy as np
 from math import sqrt, acos 
@@ -53,7 +53,7 @@ fg = np.array([0, 0, -1])
 l = np.zeros((6,3))
 Y = np.zeros(6)
 sigma = np.zeros(6)
-euler_angles = Point()
+rpy_angles = Point()
 min_angle = 0
 flag = False
 identidade = np.identity(3)
@@ -88,7 +88,7 @@ def min(x):
     return m
 
 def callback_imu(data):
-    global quat, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag, euler_angles
+    global quat, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag, rpy_angles
     global p1, p2, p3, p4, p5, p6, p1_l, p2_l, p3_l, p4_l, p5_l, p6_l, p_l, a, p
     identidade = np.identity(3)
     quat[0] = data.orientation.x 
@@ -98,10 +98,10 @@ def callback_imu(data):
     r = quaternion_matrix(quat)#retorna matriz de rotacao 4x4
     rot_matrix = r[0:3, 0:3] #corta a matriz de rotacao em 3x3 e armazena em rot_matrix
     #rot_matrix = np.identity(3) 
-    e = euler_from_quaternion(quat)
-    euler_angles.x = e[0] #row
-    euler_angles.y = e[1] #pitch
-    euler_angles.z = e[2] #yaw
+    rpy = euler_from_matrix(r, 'sxyz') #s significa eixos estaticos
+    rpy_angles.x = np.degrees(rpy[0]) #roll em graus
+    rpy_angles.y = np.degrees(rpy[1]) #pitch em graus
+    rpy_angles.z = np.degrees(rpy[2]) #yaw em graus
 
     #multiplicando cada ponto pi(i = 1,2,...,6) pela matriz de rotacao, resultando em pontos pi_l(i = 1,2,...,6):
     p1_l = np.dot(rot_matrix,p1)
@@ -144,8 +144,8 @@ def procedure():
     min_pub = rospy.Publisher('/min_angle', Float32, queue_size=10)
     angles_pub = rospy.Publisher('/angles', Float32MultiArray, queue_size=10)
     flag_pub = rospy.Publisher('/angle_flag', Bool, queue_size=10)
-    euler_pub = rospy.Publisher('/euler_imu', Point, queue_size=10)
-    rospy.Subscriber("/phone1/android/imu", Imu, callback_imu)
+    rpy_pub = rospy.Publisher('/imu_rpy', Point, queue_size=10)
+    rospy.Subscriber("/phone1/android/imu", Imu, callback_imu) #para celular:  rospy.Subscriber("/phone1/android/imu", Imu, callback_imu)
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         a = Float32MultiArray()
@@ -154,7 +154,7 @@ def procedure():
         min_pub.publish(min_angle)   
         angles_pub.publish(a)
         flag_pub.publish(flag)
-        euler_pub.publish(euler_angles)
+        rpy_pub.publish(rpy_angles)
         #print "\n"
         #print "-----------------------------------------------------"
         #print ("Quaternio IMU: %s"%quat)
@@ -172,7 +172,7 @@ def procedure():
         #print "Angulos (em graus):\n%s"%ang_final
         #print_diagrama(ang_final)
         #print "-----------------------------------------------------"  
-        #print euler_angles
+        #print rpy_angles
 
         
         
