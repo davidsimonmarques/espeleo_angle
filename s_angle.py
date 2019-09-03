@@ -45,6 +45,7 @@ p6_l = np.zeros(3)
 p = np.zeros(6) #Esse vetor recebera em cada coluna um vetor pi_l (i = 1,2,...,6)
 #----------------------------------
 a = np.zeros((6, 3))
+e = np.zeros(3)
 ang_final = np.zeros((6,1))
 quat = np.zeros(4) #inicializacao da variavel que recebe o quaternio da imu
 r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da conversao de quaternio em matriz de rotacao
@@ -65,20 +66,6 @@ def modulo(x):
         soma += x[k]*x[k]
     mod = sqrt(soma)
     return mod
-def print_diagrama(ang):
-    cor = np.array([32, 32, 32, 32, 32, 32])
-    for i in range(len(ang)):
-        if ang[i]<10 and ang[i]>0:
-            cor[i] = 33
-        elif ang[i]<=0:
-            cor[i] = 31
-        elif ang[i]>=10 and ang[i]<25:
-            cor[i] = 32
-        else:
-            cor[i] = 34
-    print '\033[%sm'%(cor[5])+'(%s) '%round(ang[5],2)+'\033[0;0m'+'____ ' + '\033[%sm'%(cor[0])+'(%s)\n'%round(ang[0],2)+'\033[0;0m' + '    |      X   |\n' + '\033[%sm'%(cor[4])+'(%s) '%round(ang[4],2)+'\033[0;0m' +'y__| '+ '\033[%sm'%(cor[1])+'(%s)\n'%round(ang[1],2)+'\033[0;0m'+ '    |          |\n' + '\033[%sm'%(cor[3])+'(%s) '%round(ang[3],2)+'\033[0;0m' +'____ '+ '\033[%sm'%(cor[2])+'(%s)\n'%round(ang[2],2)+'\033[0;0m'
-        
-    
 
 def min(x):
     m = 999999
@@ -88,7 +75,7 @@ def min(x):
     return m
 
 def callback_imu(data):
-    global quat, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag, rpy_angles
+    global quat, fg, r, rot_matrix, l, Y, ang_final, identidade, sigma, min_angle, flag, rpy_angles
     global p1, p2, p3, p4, p5, p6, p1_l, p2_l, p3_l, p4_l, p5_l, p6_l, p_l, a, p
     identidade = np.identity(3)
     quat[0] = data.orientation.x 
@@ -173,12 +160,6 @@ def procedure():
         #print_diagrama(ang_final)
         #print "-----------------------------------------------------"  
         #print rpy_angles
-
-        
-        
-        
-        
-        
 	rate.sleep()
 
             
