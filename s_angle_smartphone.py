@@ -18,11 +18,17 @@ from math import sqrt, acos
 #     |         |            
 #   (p4) ____ (p3)             
 # 
-m = 6 #numero de pontos de contato
-dx = 0.212 
-dy = 0.33 #distancia entre p6 e p1 = distancia entre p4 e p3          
-dy_m = 0.425 #distancia entre p5 e p2 - rodas mais afastadas      
-dz = 0.135 #altura do centro de massa        
+#m = 6 #numero de pontos de contato
+#dx = 0.212 
+#dy = 0.33 #distancia entre p6 e p1 = distancia entre p4 e p3          
+#dy_m = 0.425 #distancia entre p5 e p2 - rodas mais afastadas      
+#dz = 0.135 #altura do centro de massa   
+m = rospy.get_param("m")
+dx = rospy.get_param("dx")
+dy = rospy.get_param("dy")
+dy_m = rospy.get_param("dy_m")
+dz = rospy.get_param("dz")
+fg = np.array(rospy.get_param("fg"))     
 #-----------------------------------
 #Coordenadas dos pontos de contato:
 #-----------------------------------
@@ -49,10 +55,9 @@ ang_final = np.zeros((6,1))
 quat = np.zeros(4) #inicializacao da variavel que recebe o quaternio da imu
 r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da conversao de quaternio em matriz de rotacao
 rot_matrix = np.zeros((3,3)) #inicializacao da variavel que recebe a matriz de rotacao reduzida para 3x3              
-fg = np.array([0, 0, -1])
 l = np.zeros((6,3))
 Y = np.zeros(6)
-sigma = np.zeros(6)
+sigma = np.ones(6)
 rpy_angles = Point()
 min_angle = 0
 flag = False
@@ -65,21 +70,7 @@ def modulo(x):
         soma += x[k]*x[k]
     mod = sqrt(soma)
     return mod
-def print_diagrama(ang):
-    cor = np.array([32, 32, 32, 32, 32, 32])
-    for i in range(len(ang)):
-        if ang[i]<10 and ang[i]>0:
-            cor[i] = 33
-        elif ang[i]<=0:
-            cor[i] = 31
-        elif ang[i]>=10 and ang[i]<25:
-            cor[i] = 32
-        else:
-            cor[i] = 34
-    print '\033[%sm'%(cor[5])+'(%s) '%round(ang[5],2)+'\033[0;0m'+'____ ' + '\033[%sm'%(cor[0])+'(%s)\n'%round(ang[0],2)+'\033[0;0m' + '    |      X   |\n' + '\033[%sm'%(cor[4])+'(%s) '%round(ang[4],2)+'\033[0;0m' +'y__| '+ '\033[%sm'%(cor[1])+'(%s)\n'%round(ang[1],2)+'\033[0;0m'+ '    |          |\n' + '\033[%sm'%(cor[3])+'(%s) '%round(ang[3],2)+'\033[0;0m' +'____ '+ '\033[%sm'%(cor[2])+'(%s)\n'%round(ang[2],2)+'\033[0;0m'
         
-    
-
 def min(x):
     m = 999999
     for i in range(len(x)):
@@ -130,6 +121,7 @@ def callback_imu(data):
                 sigma[i] = 1
             else:
                 sigma[i] = -1
+    
     for i in range(len(Y)):
         #Y[i] = np.arccos(-l[i][2]/modulo(l[i]))
         Y[i] = sigma[i]*np.arccos(np.dot(fg/modulo(fg), l[i]/modulo(l[i])))
@@ -153,7 +145,8 @@ def procedure():
         #a = [ang_final[0], ang_final[1], ang_final[2], ang_final[3], ang_final[4], ang_final[5]]   
         min_pub.publish(min_angle)   
         angles_pub.publish(a)
-        flag_pub.publish(flag)
+        if flag == True:
+            flag_pub.publish(flag)
         rpy_pub.publish(rpy_angles)
         #print "\n"
         #print "-----------------------------------------------------"
@@ -170,14 +163,7 @@ def procedure():
         #print ("p- Pontos multiplicados pela matriz de rotacao (linhas = pontos): \n%s"%p)
         #print "-----------------------------------------------------"  
         #print "Angulos (em graus):\n%s"%ang_final
-        #print_diagrama(ang_final)
-        #print "-----------------------------------------------------"  
-        #print rpy_angles
-
-        
-        
-        
-        
+        #print_diagrama(ang_final)  
         
 	rate.sleep()
 

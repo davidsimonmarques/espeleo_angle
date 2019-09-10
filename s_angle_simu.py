@@ -16,11 +16,17 @@ from math import sqrt, acos
 #     |         |            
 #   (p4) ____ (p3)             
 # 
-m = 6 #numero de pontos de contato
-dx = 0.212 
-dy = 0.33 #distancia entre p6 e p1 = distancia entre p4 e p3          
-dy_m = 0.425 #distancia entre p5 e p2 - rodas mais afastadas      
-dz = 0.135 #altura do centro de massa        
+#m = 6 #numero de pontos de contato
+#dx = 0.212 
+#dy = 0.33 #distancia entre p6 e p1 = distancia entre p4 e p3          
+#dy_m = 0.425 #distancia entre p5 e p2 - rodas mais afastadas      
+#dz = 0.135 #altura do centro de massa        
+m = rospy.get_param("m")
+dx = rospy.get_param("dx")
+dy = rospy.get_param("dy")
+dy_m = rospy.get_param("dy_m")
+dz = rospy.get_param("dz")
+fg = np.array(rospy.get_param("fg"))
 #-----------------------------------
 #Coordenadas dos pontos de contato:
 #-----------------------------------
@@ -43,11 +49,10 @@ p6_l = np.zeros(3)
 p = np.zeros(6) #Esse vetor recebera em cada coluna um vetor pi_l (i = 1,2,...,6)
 #----------------------------------
 a = np.zeros((6, 3))
-e = np.zeros(4)
+quat = np.zeros(4)
 ang_final = np.zeros((6,1))
-r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da conversao de euler em matriz de rotacao
+r = np.zeros((4,4)) #inicializacao da variavel que recebe o resultado da conversao de quaternio em matriz de rotacao
 rot_matrix = np.zeros((3,3)) #inicializacao da variavel que recebe a matriz de rotacao reduzida para 3x3              
-fg = np.array([0, 0, -1])
 l = np.zeros((6,3))
 Y = np.zeros(6)
 sigma = np.zeros(6)
@@ -72,15 +77,14 @@ def min(x):
     return m
 
 def callback_imu(data):
-    global r, rot_matrix, e, I, Y, ang_final, fg, identidade, sigma, min_angle, flag, rpy_angles
+    global r, rot_matrix, quat, I, Y, ang_final, fg, identidade, sigma, min_angle, flag, rpy_angles
     global p1, p2, p3, p4, p5, p6, p1_l, p2_l, p3_l, p4_l, p5_l, p6_l, p_l, a, p
 
-    e[0] = data.orientation.x
-    e[1] = data.orientation.y
-    e[2] = data.orientation.z
-    e[3] = data.orientation.w
-    #r = np.array(euler_matrix(e[0], e[1], e[2]))#retorna matriz de rotacao 4x4
-    r = quaternion_matrix(e)
+    quat[0] = data.orientation.x
+    quat[1] = data.orientation.y
+    quat[2] = data.orientation.z
+    quat[3] = data.orientation.w
+    r = quaternion_matrix(quat)
     rot_matrix = r[0:3, 0:3] #corta a matriz de rotacao em 3x3 e armazena em rot_matrix
     #rot_matrix = np.identity(3) 
     rpy = euler_from_matrix(r, 'sxyz') #s significa eixos estaticos
@@ -138,13 +142,14 @@ def procedure():
         a.data = ang_final
         #a = [ang_final[0], ang_final[1], ang_final[2], ang_final[3], ang_final[4], ang_final[5]]   
         min_pub.publish(min_angle)   
-        angles_pub.publish(a)Float32, Bool, Float32MultiArray
-        flag_pub.publish(flag)
+        angles_pub.publish(a)
+        if flag == True:
+            flag_pub.publish(flag)
         rpy_pub.publish(rpy_angles)
         #print "\n"
         #print "-----------------------------------------------------"
         #print ("Matriz de rotacao: \n%s"%rot_matrix)
-        print ("Quaternio: \n%s"%e)
+        #print ("Quaternio: \n%s"%e)
         #print "-----------------------------------------------------"
         #print ("P1: \n%s"%p1)
         #print "-----------------------------------------------------"
@@ -157,7 +162,6 @@ def procedure():
         #print "Angulos (em graus):\n%s"%ang_final
         #print_diagrama(ang_final)
         #print "-----------------------------------------------------"  
-        #print rpy_angles
 	rate.sleep()
 
 
