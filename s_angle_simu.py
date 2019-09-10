@@ -131,7 +131,7 @@ def callback_imu(data):
 
 def procedure():
     rospy.init_node('stability_angle', anonymous=True)
-    rospy.Subscriber("/ros_eposmcd/imu_data", Imu, callback_imu)
+    rospy.Subscriber("/espeleo/imu_data", Imu, callback_imu)
     min_pub = rospy.Publisher('/min_angle', Float32, queue_size=10)
     angles_pub = rospy.Publisher('/angles', Float32MultiArray, queue_size=10)
     flag_pub = rospy.Publisher('/angle_flag', Bool, queue_size=10)
